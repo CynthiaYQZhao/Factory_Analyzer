@@ -1,0 +1,88 @@
+---
+params:
+  studentName: NA
+  today: NA
+  resultData: NA
+  outputFormat: NA
+title: "Course Matching Report for `r params$studentName`"
+author: "`r params$studentName`"
+date: "`r params$today`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    thumbnails: false
+    df_print: paged
+    lightbox: true
+    gallery: true
+    toc_depth: 4
+    highlight: tango
+    code_folding: "show"
+    code_download: true
+---
+
+```{css echo=FALSE}
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap');
+code{
+  font-family: 'Fira Code'!important;
+}
+```
+
+
+```{r include=FALSE}
+notHTML <- params$outputFormat != "HTML" 
+
+result <- params$resultData %>% 
+      select(-description_clean) %>%
+  arrange(desc(Percentile_Rank))
+```
+
+
+## Calculated Data Output  
+
+```{r}
+if(notHTML) {
+  result %>% head(10) %>% as_tibble()
+} else{
+  result %>%
+    mutate_if(is.numeric, funs(round(.,4))) %>%
+    datatable(options = list(columnDefs = list(list(
+      targets = 2,
+      render = JS(
+        "function(data, type, row, meta) {",
+        "return type === 'display' && data.length > 100 ?",
+        "'<span title=\"' + data + '\">' + data.substr(0, 100) + '...</span>' : data;",
+        "}"
+      )
+    ))))
+}
+```
+
+## Rank Bar Plot 
+
+```{r fig.height=10, fig.width=10}
+if(notHTML) {
+  result %>%
+    head(10) %>%
+    ggplot(aes(
+      x = Percentile_Rank,
+      y = reorder(title, Percentile_Rank),
+      fill = title
+    )) +
+    geom_col() +
+    geom_text(aes(label = Percentile_Rank), hjust = 1) +
+    ggtitle("Top 10 Course Matching Rank") +
+    xlab("Course Name") +
+    ylab("Percentile Rank") +
+    theme(legend.position = "none")
+} else{
+  result %>% 
+    plot_ly(
+      x = ~ Percentile_Rank,
+      y = ~ reorder(title, Percentile_Rank),
+      name = "Similarity Percentile Rank",
+      type = "bar"
+    )
+}
+
+```
+
